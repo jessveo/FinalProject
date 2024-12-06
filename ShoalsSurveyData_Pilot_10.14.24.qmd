@@ -1,0 +1,335 @@
+---
+title: "ShoalsData_2011to2024_PilotAnalysis"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+10/14/24
+
+Uploading the data
+```{r}
+
+setwd("C:/Users/jessv/OneDrive/Desktop/BIO 809")
+shoals <-read.csv("2024_Shoals_SealSurveys.csv")
+```
+
+Clean up the data to survey counts per year with standard deviation, mean, etc. 
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+
+shoals_avg <- shoals %>% 
+  group_by(Year) %>% 
+  summarize(Pv= mean(TOTAL.PV), Hg= mean(TOTAL.HG))
+
+shoals_sd <- shoals %>% 
+  group_by(Year) %>% 
+  summarize(Pv=sd(TOTAL.PV), Hg=sd(TOTAL.HG))
+
+shoals_avlong <- shoals_avg %>% 
+  pivot_longer(names_to= "Species", values_to = 'meancount', cols=Pv:Hg) 
+
+shoals_sdlong <- shoals_sd %>% 
+  pivot_longer(names_to='Species', values_to = 'sdcount', cols=Pv:Hg)
+
+shoals_joined <- inner_join(shoals_avlong, shoals_sdlong)
+
+ggplot(data=shoals_clean, aes(x=Year, y=AvgPv:AvgUnk)) +
+    geom_bar(stat='identity', position=position_dodge()) 
+
+
+ggplot(data=shoals_joined, aes(x=Year, y=meancount, color=Species)) +
+  geom_point() + geom_smooth(method = 'glm', method.args=('poisson')) +
+  ylab("Average Count") +
+  xlab("Year") +
+  ggtitle("Average Count of Seals per Year") +
+  scale_color_discrete(labels = c("Hg" = "Gray Seal", "Pv" = "Harbor Seal"))
+
+ggplot(data=shoals, aes(x=TOTAL.HG)) +
+  geom_histogram(color= 'darkblue', fill="blue", bins=15) + 
+  geom_vline(aes(xintercept=mean(TOTAL.HG)), color="navyblue", linetype="dashed", size=1) +
+  xlab("Gray Seal Count per Survey") +
+  ylab("Count") + 
+  ggtitle("Gray seal count histogram 2011-2024")
+
+ggplot(data=shoals, aes(x=TOTAL.PV)) +
+  geom_histogram(color= 'green4', fill="limegreen", bins=15) + 
+  geom_vline(aes(xintercept=mean(TOTAL.PV)), color="darkgreen", linetype="dashed", size=1) +
+  xlab("Harbor Seal Count per Survey") +
+  ylab("Count") + 
+  ggtitle("Harbor seal count histogram 2011-2024")
+
+hist(shoals$TOTAL.HG)
+hist(shoals$TOTAL.PV)
+
+#linear model output
+mymod <- lm(TOTAL.HG ~ Year, data = shoals)
+summary(mymod)
+#according to linear model, for each year the count of Hg increases by 14.886
+pvmod <- lm(TOTAL.PV ~ Year, data=shoals)
+summary(pvmod) #for each year there is a 7.395 decrease in Pv
+
+hgmodglm <- glm(TOTAL.HG ~ Year, data = shoals, family= 'poisson')
+summary(hgmodglm)
+
+#the rate at which the count is changing because this is exponentiatedd
+#Get rid of log term 
+exp(8.358e-02)
+#result: 1.0872
+#increasing at a rate of 8.7% per year 
+
+pvmodglm <- glm(TOTAL.PV ~ Year, data=shoals, family = 'poisson')
+summary(pvmodglm)
+exp(-0.0326890)
+#result: 0.9678
+1-.9678
+#Population is decreasing at a rate of 3.2% per year 
+
+speciesmod <- glm(TOTAL.HG ~ Year + TOTAL.PV, data=shoals, family= 'poisson')
+summary(speciesmod)
+
+#Year
+exp(1.031e-01)
+#1.108602
+#when the effect of pv is held constant, hg are increasing at a rate of 10.87% per year
+#p value: <2e-16
+
+#Pv
+exp(2.329e-03)
+#1.002332
+#When the effect of year is held constant, Hg increase 0.23% with every one unit increase in Pv 
+# p value: <2e-16 
+
+pvmod <- glm(TOTAL.PV ~ Year + TOTAL.HG, data=shoals, family='poisson')
+summary(pvmod)
+
+#Year 
+exp(-7.090e-02)
+#0.931555
+1-0.931555
+#0.068445
+#With effect of hg held constant, Pv decrease at rate of 6.8% per year 
+#p=<2e-16
+
+#hg
+exp( 2.258e-03)
+#1.002261
+#When effect of year is held constant, Pv increase at rate of 0.226% with every one unit increase in Hg 
+```
+
+
+Making a prettier plot using old script
+```{r}
+#need to remove 2014 
+
+shoals_joined <- shoals_joined[-c(7,8),]
+
+#plotting
+ggplot(data=shoals_joined, aes(x=as.factor(Year), y=meancount, fill=Species)) + 
+  geom_bar(stat="identity", position=position_dodge(), width=0.8)+
+  scale_fill_manual(values=c("slategray", "slategray1", "slategray2")) + 
+  theme_minimal() + 
+  ggtitle("Average Number of Seals Per Year")+
+  ylab("Number of Seals") + 
+  geom_errorbar(aes(ymin=meancount-sdcount, ymax=meancount+sdcount), width=.2,
+                position=position_dodge(.9)) +
+  scale_x_discrete(name ="Year", breaks=c(2011, 2012, 2013, 2015,
+                                          2016, 2017, 2018, 2019, 
+                                          2022, 2023, 2024), 
+                   labels=c("2011","2012","2013", "2015", 
+                            "2016", "2017", "2018", "2019", 
+                            "2022", "2023", "2024"), drop=FALSE)
+  
+  xlim("2011","2012","2013", "2015", "2016", "2017", "2018", "2019", 
+       "2022", "2023", "2024")
+
+  scale_x_discrete(name ="Year", breaks=c(2011, 2012, 2013, 2015,
+                                          2016, 2017, 2018, 2019, 
+                                          2022, 2023, 2024), 
+                   labels=c("2011","2012","2013", "2015", 
+                            "2016", "2017", "2018", "2019", 
+                            "2022", "2023", "2024"))
+
+ggplot(data=shoals_joined, aes(x=as.factor(Year), y=meancount, color=Species, 
+                               group=Species)) +
+  geom_point() + geom_line()
+
+```
+
+Okay, attempting to merge SST data with shoals data.
+
+```{r}
+Temp <- read.csv("6.2024to8.2024_WMS_SST_AT.csv")
+
+Temp <- Temp %>% 
+  mutate(Temp, station='BO1')
+
+ggplot(data=Temp, aes(x=Date, y=BO1.1M.Daily.Average.SST, group=station)) +
+  geom_line() 
+
+shoals24 <- shoals[-c(1:256),]
+
+shoals24clean <- shoals24 %>% 
+  select(Date, TOTAL.PV, TOTAL.HG) %>% 
+  pivot_longer(names_to= "Species", values_to = 'count', cols=TOTAL.PV:TOTAL.HG)
+
+tempjoin <- inner_join(Temp, shoals24clean)
+
+coeff <- .04
+
+ggplot(tempjoin, aes(x=Date)) +
+  geom_point(aes(y=count, group=Species, color=Species), size=1.5) + geom_line(aes(y=count, group=Species, color=Species), size=.8) +
+  geom_line(aes(y=BO1.1M.Daily.Average.SST/coeff, group=station, color=station), size=.8) +
+  scale_y_continuous(name="Minimum Count Estimate",
+                     sec.axis=sec_axis(~.*coeff, name="Temperature (C)")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(axis.title.y= element_text(color="blue"),
+        axis.title.y.right=element_text(color="red")) +
+  scale_color_discrete(labels = c("TOTAL.HG" = "Gray Seal", "TOTAL.PV" = "Harbor Seal", 
+                                  "BO1" = "SST")) +
+  labs(color = "Key") +
+  ggtitle("Minimum count estimates and SST during 2024 survey season") 
+
+```
+
+Making boxplots
+
+```{r}
+shoalsbox <- shoals %>% 
+  select(Year, TOTAL.PV, TOTAL.HG) %>% 
+  pivot_longer(names_to= "Species", values_to = 'count', cols=TOTAL.PV:TOTAL.HG) 
+
+shoalsboxno2014 <- shoalsbox[-c(151:164),]
+  
+
+ggplot(shoalsboxno2014, aes(y=count, fill=Species)) +
+  geom_boxplot() +
+  facet_wrap(~Year)
+
+ggplot(shoalsboxno2014, aes(x=as.factor(Year), y=count, fill=Species)) +
+  geom_boxplot() +
+  facet_wrap(~Species)
+
+ggplot(shoalsboxno2014, aes(x=as.factor(Year), y=count, fill=Species)) +
+  geom_boxplot()
+
+```
+
+Trying to run a model with count data and temperature data. 
+
+```{r}
+
+shoals24wide <- shoals24 %>% 
+  select(Date, TOTAL.PV, TOTAL.HG) 
+tempjoin2 <- inner_join(Temp, shoals24wide)
+tempmod <- glm(TOTAL.HG ~ BO1.1M.Daily.Average.SST, data = tempjoin2, family= 'poisson')
+summary(tempmod)
+exp(-0.076168)
+#0.9266
+1-0.9266
+#For every one unit increase in SST, hg count declines by 7.3%
+
+tempmod2 <- glm(TOTAL.HG ~ BO1.1M.Daily.Average.SST + TOTAL.PV, data = tempjoin2, family= 'poisson')
+summary(tempmod2)
+AIC(tempmod, tempmod2)
+
+#SST: -0.0152134
+exp(-0.0152134)
+1-.9849017
+#For every one unit increase in SST, Hg count declines by 1.5% (not sig)
+
+#PV: 0.0045475  
+exp(0.0045475)
+#1.004558
+#With SST held constant, for every additional harbor seal, gray seals increase by .45%
+#does that make sense
+
+tempmod3 <- glm(TOTAL.PV ~ BO1.1M.Daily.Average.SST + TOTAL.HG, data = tempjoin2, family= 'poisson')
+summary(tempmod3)
+
+#sst
+exp(-0.0082244)
+#0.9918093
+1-0.9918093
+#0.0081907
+#p=0.444    
+
+#hg
+exp( 0.0030177)
+#1.003022
+#with sst held constant, for every additional gray seal, pv increase by 0.3%
+```
+
+
+Trying to do something now with ledge per seal...wish me luck.
+
+
+```{r}
+
+ledgedata <- shoals %>% 
+  select(Year, Pv.....1S, PV.2N, PV.3S, PV.3N, PV.4E, PV.4NE, PV.4NW, PV.6, Pv...1N, Pv...2S, Pv.2E, 
+         HG.2E, HG.2N, HG.3S, HG.3N, HG.4E, HG.4NE, HG.4NW, HG.6, Hg...1S, Hg...1N, Hg.2S)
+
+
+```
+
+Making a figure with count per month combined by all years
+
+```{r}
+#First I need to make a new column with month extracted from date
+
+# Load the lubridate package
+library(lubridate)
+# Create a sample date
+#date <- ymd("2023-11-30")
+# Extract the month using lubridate's month() function
+#month <- month(date)
+# Print the result
+#print(month
+
+shoals$month <- format(as.Date(shoals$Date, format="%m/%d/%Y"),label=TRUE, "%m")
+
+shoalscpmav <- shoals %>% 
+  group_by(month) %>% 
+  summarize(Pv = mean(TOTAL.PV), Hg=mean(TOTAL.HG))
+
+shoalscpmsd <- shoals %>% 
+  group_by(month) %>% 
+  summarize(Pv = sd(TOTAL.PV), Hg=sd(TOTAL.HG))
+
+shoalscpmavlong <- shoalscpmav %>% 
+  pivot_longer(names_to="Species", values_to="meancount", cols=Pv:Hg)
+
+shoalscpmsdlong <- shoalscpmsd %>% 
+  pivot_longer(names_to="Species", values_to="sdcount", cols=Pv:Hg)
+
+cpmjoined <- inner_join(shoalscpmavlong, shoalscpmsdlong)
+
+ggplot(data=cpmjoined, aes(x=month, y=meancount, fill=Species)) +
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=meancount-sdcount, ymax=meancount+sdcount), width=.2,
+                 position=position_dodge(.9)) + 
+  scale_fill_manual(values=c("slategray", "slategray1", "slategray2")) +
+  theme_minimal() +
+  ggtitle("Average number of seals per month from 2011-2024") +
+  ylab("Number of seals") +
+  xlab("Month") +
+  scale_x_discrete(labels=c("May", "June", "July", "August")) 
+```
+
+Table with number of surveys 
+```{r}
+shoalscpm <- shoals %>% 
+  group_by(month) %>% 
+  summarize(count= n(), Pv = mean(TOTAL.PV), sdPv=sd(TOTAL.PV), Hg=mean(TOTAL.HG),sdHg=sd(TOTAL.HG))
+
+library(knitr)
+library(kableExtra)
+kable(shoalscpm, col.names=c( "Month", "Number of surveys per month", "Average Harbor Seal Count", "Standard Deviation of Harbor Seal Count", "Average Gray Seal Count", "Standard Deviation of Gray Seal Count")) %>% 
+  kable_classic(full_width=F, html_font="Cambria")
+```
+

@@ -1,0 +1,252 @@
+---
+title: "BIO 809 Final Project"
+format: pdf
+editor: visual
+echo: false
+warning: false
+---
+
+# Long term population assessment of gray (*Halichoerus grypus*) and harbor (*Phoca vitulina*) seals at Duck Island, ME, USA
+
+### Jessica Veo
+
+**Introduction**
+
+           Gray (*Halichoerus grypus*) and harbor (*Phoca vitulina*) seals have been present in the Gulf of Maine for millennia, as evidenced by archaeological records spanning Connecticut to Maine (Spiess and Lewis, 2001; Waters, 1967; Wood et al., 2020). However, due to perceived competition between seals and commercial fisheries, Maine and Massachusetts enacted legalized bounty hunting of both gray and harbor seals beginning in the late 1800’s. Some commercial fishers and other pro-fishing interest groups believed seals to be decimating commercially important fishery stocks, including cod, salmon, and lobster; and felt that seal population control would allow stocks to recover (Lelli and Harris, 2006). While documentation of approximately 40,000 seal bounties paid out exist, Lelli et al. (2009) estimate that the total number of seals killed in the Gulf of Maine lies somewhere between 72,000 and 135,000 individuals. Despite the greatly reduced seal populations, some commercial fishers still perceived seals as the reason for continuously declining stocks (Conkling, 1999).
+
+           Bounty hunting for seals in the Gulf of Maine ended in 1962 (Lelli et al., 2009), and by 1972, the Marine Mammal Protection Act (MMPA, 1972) prevented the “take” of all marine mammals in U.S. waters, which includes harassment, hunting, capturing, or killing. Post-bounty hunting period, harbor seals in the Gulf of Maine persisted in low numbers, but gray seals were regionally extirpated from U.S. waters. However, over time, with the protection of the MMPA, Canadian gray seals moved south to repopulate historic U.S. pupping sites. The first U.S. pups were sighted in 1988 on Muskeget Island in Massachusetts, and though repopulation was slow to start (Wood et al., 2020), by 2021 U.S. pup production totaled 6469 pups (Wood et al., 2022).
+
+            Though many scientists and managers viewed the resurgence of gray and harbor seals to U.S. waters as a conservation success story, the rapidly increasing numbers of large, charismatic mesopredators that regularly haul out on coastal lands has resulted in increasing overlap with human communities, which in some cases has resulted in conflict. In 2020, gray seals were declared the most bycaught marine mammal in the United States (Northeast Fisheries Science Center, 2020). The average observed bycatch mortality from 2014 to 2018 was 946 gray seals (NOAA 2021), and the actual number of gray seal mortality caused by bycatch is likely much higher, as there is significant spatial overlap between young of the year gray seals and gillnet fishing activity (Murray et al., 2021). While some human user groups view seals favorably, commercial fishers tend to view seals negatively and support the call for seal culls (Jackman et al., 2023). Seal populations are doing very well in U.S. waters and will likely have increasing overlap with recreational and commercial human uses of coastal lands and waters. Better understanding the space use of gray and harbor seals, as well as how that might shift under future climate change regimes, is crucial for better understanding human and seal space use conflict in the future.
+
+**Methods**
+
+            The Isles of Shoals are a nine-island archipelago seven miles off the coast of New Hampshire and southern Maine. Duck Island is an uninhabited island in the archipelago home to a seasonal bird breeding colony. Gray and harbor seals regularly haul out on the ledges surrounding Duck Island in the summer during low tides. Harbor seals use the island as a pupping colony in the late spring to early summer, though it is unknown whether gray seals use the island as a pupping colony in the winter. The island is managed by U.S. Fish and Wildlife and entry to the island is prohibited due to unexploded ordnance.
+
+            This study employed boat-based, photographic surveys of seals hauled out on Duck Island and ledges from 2011 to 2024.[^1] Surveys occurred from early June to early August. The survey followed a consistent track line (Figure 1) and photographs were taken with a Canon DSLR and a 400 mm lens. Images were used to determine minimum count estimates of both species of seal, and documentation of entanglements, injuries, brands, tags, and pups were recorded. Individuals, typically gray seals, were identified using photographic mark recapture and unique pelage markings.\\
+
+[^1]: Due to funding constraints as well as the COVID-19 pandemic, data collection did not occur in 2014, 2020, and 2021.
+
+           We examined the relationship between species and year using a generalized linear model with a Poisson regression. We modeled gray seal count using a poisson model with year and harbor seal count as the predictors. We also modeled harbor seal count using a poisson model with year and gray seal count as the predictors. To examine the effect of sea surface temperature (SST) on seal counts, we modeled gray seal count with SST and harbor seal count as the predictors. We also modeled harbor seal count with SST and gray seal count as the predictors.
+
+![](Screenshot%202024-11-12%20161826.png)
+
+Figure 1. Example track line of photographic survey of Duck Island and ledges.
+
+**Results**
+
+            Over the course of the study, gray seal minimum count estimates began low, with an average of 51.65 gray seals counted in 2011, but peaked in 2023 with an average of 314.74 seals. However, the following year saw a decline in gray seals. Harbor seal numbers increased each year from 2011 to 2015, but have remained below gray seal average counts starting since 2022 (Figure 2).
+
+```{r}
+setwd("C:/Users/jessv/OneDrive/Desktop/BIO 809")
+shoals <-read.csv("2024_Shoals_SealSurveys.csv")
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+shoals_avg <- shoals %>% 
+  group_by(Year) %>% 
+  summarize(Pv= mean(TOTAL.PV), Hg= mean(TOTAL.HG))
+
+shoals_sd <- shoals %>% 
+  group_by(Year) %>% 
+  summarize(Pv=sd(TOTAL.PV), Hg=sd(TOTAL.HG))
+
+shoals_avlong <- shoals_avg %>% 
+  pivot_longer(names_to= "Species", values_to = 'meancount', cols=Pv:Hg) 
+
+shoals_sdlong <- shoals_sd %>% 
+  pivot_longer(names_to='Species', values_to = 'sdcount', cols=Pv:Hg)
+
+shoals_joined <- inner_join(shoals_avlong, shoals_sdlong)
+shoals_joined <- shoals_joined[-c(7,8),]
+ggplot(data=shoals_joined, aes(x=as.factor(Year), y=meancount, fill=Species)) + 
+  geom_bar(stat="identity", position=position_dodge(), width=0.8)+
+  scale_fill_manual(values=c("slategray", "slategray1", "slategray2")) + 
+  theme_minimal() + 
+  ggtitle("Average Number of Seals Per Year")+
+  ylab("Number of Seals") + 
+  geom_errorbar(aes(ymin=meancount-sdcount, ymax=meancount+sdcount), width=.2,
+                position=position_dodge(.9)) +
+  scale_x_discrete(name ="Year", breaks=c(2011, 2012, 2013, 2015,
+                                          2016, 2017, 2018, 2019, 
+                                          2022, 2023, 2024), 
+                   labels=c("2011","2012","2013", "2015", 
+                            "2016", "2017", "2018", "2019", 
+                            "2022", "2023", "2024"), drop=FALSE)
+
+```
+
+Figure 2. Average count of seals per year by species. Error bars represent standard deviation.
+
+            When examining average count per month across all years (Figure 3) gray seal counts appear to increase as the summer progresses. May saw the lowest gray seal counts with an average of 35.69 seals, however very few surveys were conducted in May (Table 1), and therefore data from May should be considered carefully. Harbor seal count does appear to decline in August, however once again the number of surveys in August was limited when compared to June and July.
+
+```{r}
+#First I need to make a new column with month extracted from date
+
+# Load the lubridate package
+library(lubridate)
+# Create a sample date
+#date <- ymd("2023-11-30")
+# Extract the month using lubridate's month() function
+#month <- month(date)
+# Print the result
+#print(month
+
+shoals$month <- format(as.Date(shoals$Date, format="%m/%d/%Y"),"%m")
+
+shoalscpmav <- shoals %>% 
+  group_by(month) %>% 
+  summarize(Pv = mean(TOTAL.PV), Hg=mean(TOTAL.HG))
+
+shoalscpmsd <- shoals %>% 
+  group_by(month) %>% 
+  summarize(Pv = sd(TOTAL.PV), Hg=sd(TOTAL.HG))
+
+shoalscpmavlong <- shoalscpmav %>% 
+  pivot_longer(names_to="Species", values_to="meancount", cols=Pv:Hg)
+
+shoalscpmsdlong <- shoalscpmsd %>% 
+  pivot_longer(names_to="Species", values_to="sdcount", cols=Pv:Hg)
+
+cpmjoined <- inner_join(shoalscpmavlong, shoalscpmsdlong)
+
+ggplot(data=cpmjoined, aes(x=month, y=meancount, fill=Species)) +
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=meancount-sdcount, ymax=meancount+sdcount), width=.2,
+                 position=position_dodge(.9)) + 
+  scale_fill_manual(values=c("slategray", "slategray1", "slategray2")) +
+  theme_minimal() +
+  ggtitle("Average number of seals per month from 2011-2024") +
+  ylab("Number of seals") +
+  xlab("Month") +
+  scale_x_discrete(labels=c("May", "June", "July", "August")) 
+```
+
+Figure 3. Average count of seals per month across all years. Error bars represent standard deviation.
+
+```{r}
+shoalscpm <- shoals %>% 
+  group_by(month) %>% 
+  summarize(count= n(), Pv = mean(TOTAL.PV), sdPv=sd(TOTAL.PV), Hg=mean(TOTAL.HG),sdHg=sd(TOTAL.HG))
+
+library(knitr)
+library(kableExtra)
+kable(shoalscpm, col.names=c( "Month", "Number of surveys", "Average Harbor Seal Count", "Standard Deviation of Harbor Seal Count", "Average Gray Seal Count", "Standard Deviation of Gray Seal Count")) %>% 
+  kable_classic(full_width=F, html_font="Cambria") %>% 
+  column_spec(1,width = ".5in") %>% 
+  column_spec(2,width = ".5in") %>% 
+  column_spec(3,width = "1in") %>% 
+  column_spec(4,width = "1in") %>% 
+  column_spec(5,width = "1in") %>% 
+  column_spec(6,width = "1in")
+```
+
+Table 1. Average number of seals per species per month across 2011-2024.
+
+            The relationship between species and year were examined using a generalized linear model with a Poisson regression (Figure 4). Total gray seal count was examined using year and total harbor seal count as covariates. Gray seal count had a statistically significant relationship with both year (p = \<2e-16) and harbor seal count (p = \<2e-16). When the effect of harbor seal count was held constant, gray seal count increased at a rate of 10.87% per year. With the effect of year held constant, gray seal count increased at a rate of 0.23% with every one unit increase in harbor seal count. When examining harbor seal count in relation to year and gray seal count, harbor seals had a statistically significant relationship with both year (p = \<2e-16) and gray seal count (p = \<2e-16). When the effect of gray seal count was held constant, harbor seal counts decreased by 6.8% per year. When the effect of year was held constant, harbor seal counts increased at a rate of 0.23% with every one unit increase in gray seal count.
+
+```{r}
+shoals_avg <- shoals %>% 
+  group_by(Year) %>% 
+  summarize(Pv= mean(TOTAL.PV), Hg= mean(TOTAL.HG))
+
+shoals_sd <- shoals %>% 
+  group_by(Year) %>% 
+  summarize(Pv=sd(TOTAL.PV), Hg=sd(TOTAL.HG))
+
+shoals_avlong <- shoals_avg %>% 
+  pivot_longer(names_to= "Species", values_to = 'meancount', cols=Pv:Hg) 
+
+shoals_sdlong <- shoals_sd %>% 
+  pivot_longer(names_to='Species', values_to = 'sdcount', cols=Pv:Hg)
+
+shoals_joined <- inner_join(shoals_avlong, shoals_sdlong)
+
+ggplot(data=shoals_joined, aes(x=Year, y=meancount, color=Species)) +
+  geom_point() + geom_smooth(method = 'glm', method.args=('poisson')) +
+  ylab("Average Count") +
+  xlab("Year") +
+  ggtitle("Average Count of Seals per Year") +
+  scale_color_discrete(labels = c("Hg" = "Gray Seal", "Pv" = "Harbor Seal"))
+
+
+
+```
+
+Figure 4. Average count of seals per year. Regression lines represent a Poisson regression.
+
+            In a generalized linear model using a Poisson regression, 2024 gray seal count was examined in relationship to sea surface temperature (SST) and harbor seal count (Figure 5). There was no statistically significant relationship between gray seal count and SST when harbor seal count was held constant (p = 0.115). However, with SST held constant, there was a significant relationship between gray seal count and harbor seal count (p = \<2e-16). With SST held constant, for every one unit increase in harbor seals, gray seals increased by 0.45%. Harbor seal counts in 2024 were also examined in relationship to SST and gray seal count. While there was again no significant relationship between harbor seal count and SST (p = 0.444), there was a significant relationship between harbor seal count and gray seal count when SST was held constant (p = \<2e-16). With SST held constant, in 2024 harbor seal counts increased by 0.3% for every one unit increase in gray seal count.
+
+```{r}
+Temp <- read.csv("6.2024to8.2024_WMS_SST_AT.csv")
+
+Temp <- Temp %>% 
+  mutate(Temp, station='BO1')
+
+shoals24 <- shoals[-c(1:256),]
+
+shoals24clean <- shoals24 %>% 
+  select(Date, TOTAL.PV, TOTAL.HG) %>% 
+  pivot_longer(names_to= "Species", values_to = 'count', cols=TOTAL.PV:TOTAL.HG)
+
+tempjoin <- inner_join(Temp, shoals24clean)
+
+coeff <- .04
+
+ggplot(tempjoin, aes(x=Date)) +
+  geom_point(aes(y=count, group=Species, color=Species), size=1.5) + geom_line(aes(y=count, group=Species, color=Species), size=.8) +
+  geom_line(aes(y=BO1.1M.Daily.Average.SST/coeff, group=station, color=station), size=.8) +
+  scale_y_continuous(name="Minimum Count Estimate",
+                     sec.axis=sec_axis(~.*coeff, name="Temperature (C)")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(axis.title.y= element_text(color="blue"),
+        axis.title.y.right=element_text(color="red")) +
+  scale_color_discrete(labels = c("TOTAL.HG" = "Gray Seal", "TOTAL.PV" = "Harbor Seal", 
+                                  "BO1" = "SST")) +
+  labs(color = "Key") +
+  ggtitle("Minimum count estimates and SST during 2024 survey season") 
+
+shoals24wide <- shoals24 %>% 
+  select(Date, TOTAL.PV, TOTAL.HG) 
+tempjoin2 <- inner_join(Temp, shoals24wide)
+
+```
+
+Figure 5. Plot showing minimum count estimates by species in blue and green, left y-axis represents the Minimum count numbers. Right y-axis represents the SST in degrees Celsius.
+
+**Discussion**
+
+           This long term data set documents shifting distributions and population structures for both of the Gulf of Maine's year round pinniped resident species. Gray seal numbers were still low in 2011, with the first year of surveys seeing on average approximately 50 gray seals. Over time gray seal numbers increased and eventually, the average count of gray seals exceeded the average count of harbor seals. As the larger species, gray seals may be out competing harbor seals for haul out space, though the mechanism is unclear as very few antagonistic behaviors on harbor seals have been documented in gray seals, and both species will choose to haul out in mixed species aggregations. Though the reason behind the rise in gray seals and the decline of harbor seals is not currently known, there is a relationship between year and harbor seal and gray seal counts.
+
+           Gray seals and harbor seals exhibited similar timing in their haul out behavior in summer. Both species had the highest counts in July and a small decline in count in August. Harbor seals use Duck Island as a breeding colony in the late spring and early summer. It is unclear what is driving gray seal seasonal space use of Duck Island, but theories include access to prey as well as predator avoidance.
+
+           There was no clear relationship between minimum count estimates for both species and SST at least within year. Fluctuations in sea surface temperature can affect ocean currents and prey availability, causing multitrophic ecological cascades and phenological shifts. However, it is possible that there is a lag in the effect of SST on population counts, in the scale of months or years, which was not examined in this study and should be explored in the future.
+
+           Overall, this is a valuable long term data set that has the potential to answer more questions about gray and harbor seal ecology, behavior, and phenology. Future studies should explore the mechanisms behind gray seal increases and harbor seal declines.
+
+**Works Cited**
+
+Conkling, P.W. 1999. Islands in Time: A Natural and Cultural History of the Islands of the Gulf of Maine. Down East Books, Camden, ME. 319 pp.
+
+Jackman, J. L., Vaske, J. J., Dowling-Guyer, S., Bratton, R., Bogomolni, A., & Wood, S. A. (2023). Seals and the Marine Ecosystem: Attitudes, Ecological Benefits/Risks and Lethal Management Views. *Human Dimensions of Wildlife*, 1–17. <https://doi.org/10.1080/10871209.2023.2212686>
+
+Lelli, B., and Harris, D.E. (2006). Seal Bounty and Seal Protection Laws in Maine, 1872 to 1972: Historic Perspectives on a Current Controversy. *Natural Resources Journal*, 46(4), 881-924.
+
+Lelli, B., Harris, D. E., & Aboueissa, A.-M. (2009). Seal Bounties in Maine and Massachusetts, 1888 to 1962. *Northeastern Naturalist*, *16*(2), 239–254.[ https://doi.org/10.1656/045.016.0206](https://doi.org/10.1656/045.016.0206)
+
+Marine Mammal Protection Act of 1972, Pub. L. No. 92-522, § 3, 16 U.S.C. 1361 Stat. 3. (1972).
+
+Murray, K., Hatch, J., DiGiovanni, R., & Josephson, E. (2021). Tracking young-of-the-year gray seals *Halichoerus grypus* to estimate fishery encounter risk. *Marine Ecology Progress Series*, *671*, 235–245.[ https://doi.org/10.3354/meps13765](https://doi.org/10.3354/meps13765)
+
+NOAA, 2021. Gray Seal (*Halichoerus grypus atlantica*): Western North Atlantic Stock.
+
+Northeast Fisheries Science Center (U.S.) (Ed.). (2020). *State of the Ecosystem 2020: Mid-Atlantic* (noaa:23889). https://doi.org/10.25923/1f8j-d564
+
+Spiess, A.E. and Lewis, R.A. (2001). The Turner Farm Fauna: 5000 Years of Hunting and Fishing in Penobscot Bay, Maine, 2-4, 27-34
+
+Waters, J. H. (1967). Gray Seal Remains from Southern New England Archeological Sites. *Journal of Mammalogy*, *48*(1), 139–141. <https://doi.org/10.2307/1378182>
+
+Wood, S.A., Josephson, E., Precoda, K., Murray, K.T. (2022). Gray seal (*Halichoerus grypus*)\
+pupping trends and 2021 population estimates in U.S. waters. US Dept Commer Northeast Fish\
+Sci Cent Ref Doc. 22-14; 16 p.. <https://doi.org/10.25923/9HJQ-GB82>
+
+Wood, S. A., Murray, K. T., Josephson, E., & Gilbert, J. (2020). Rates of increase in gray seal (*Halichoerus grypus atlantica*) pupping at recolonized sites in the United States, 1988–2019. *Journal of Mammalogy*, *101*(1), 121–128.[ https://doi.org/10.1093/jmammal/gyz184](https://doi.org/10.1093/jmammal/gyz184)
